@@ -2,11 +2,14 @@
 
 require_once __DIR__ . '/../controllers/BaseController.php';
 require_once __DIR__ . '/../models/Article.php';
+require_once __DIR__ . '/../models/Category.php';
 require_once __DIR__ . '/../connection/connection.php';
 
-class ArticleController extends BaseController {
+class ArticleController extends BaseController
+{
 
-    public function getAllArticles() {
+    public function getAllArticles()
+    {
         global $mysqli;
 
         try {
@@ -18,7 +21,8 @@ class ArticleController extends BaseController {
         }
     }
 
-    public function getArticle() {
+    public function getArticle()
+    {
         global $mysqli;
 
         try {
@@ -35,7 +39,8 @@ class ArticleController extends BaseController {
         }
     }
 
-    public function addArticle() {
+    public function addArticle()
+    {
         global $mysqli;
 
         try {
@@ -57,7 +62,8 @@ class ArticleController extends BaseController {
         }
     }
 
-    public function updateArticle() {
+    public function updateArticle()
+    {
         global $mysqli;
 
         try {
@@ -89,7 +95,8 @@ class ArticleController extends BaseController {
         }
     }
 
-    public function deleteArticle() {
+    public function deleteArticle()
+    {
         global $mysqli;
 
         try {
@@ -110,7 +117,8 @@ class ArticleController extends BaseController {
         }
     }
 
-    public function deleteAllArticles() {
+    public function deleteAllArticles()
+    {
         global $mysqli;
 
         try {
@@ -118,6 +126,54 @@ class ArticleController extends BaseController {
             self::success(["deleted_all" => true], 204);
         } catch (Exception $e) {
             self::error($e->getMessage());
+        }
+    }
+
+    public function getArticlesByCategory()
+    {
+        global $mysqli;
+
+        try {
+            $category_id = $_GET['id'] ?? null;
+            if (!$category_id) {
+                self::error("Missing category ID", 400);
+                return;
+            }
+
+            $stmt = $mysqli->prepare("SELECT * FROM articles WHERE category_id = ?");
+            $stmt->bind_param("i", $category_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $articles = [];
+            while ($row = $result->fetch_assoc()) {
+                $articles[] = (new Article($row))->toArray();
+            }
+
+            self::success($articles);
+        } catch (Exception $e) {
+            self::error($e->getMessage());
+        }
+    }
+
+    public function getCategoryOfArticle()
+    {
+        global $mysqli;
+
+        try {
+            $article_id = $_GET['id'] ?? null;
+            if (!$article_id) {
+                self::error("Missing article ID", 400);
+                return;
+            }
+
+            $article = Article::find($mysqli, (int)$article_id);
+            $category_id = $article->toArray()['category_id'] ?? null;
+
+            $category = Category::find($mysqli, $category_id);
+            self::success($category->toArray());
+        } catch (Exception $e) {
+            self::error($e->getMessage(), 404);
         }
     }
 }

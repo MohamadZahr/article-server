@@ -3,11 +3,11 @@ require_once("Model.php");
 
 class Article extends Model
 {
-
     private int $id;
     private string $name;
     private string $author;
     private string $description;
+    private ?int $category_id; 
 
     protected static string $table = "articles";
 
@@ -17,60 +17,41 @@ class Article extends Model
         $this->name = $data["name"];
         $this->author = $data["author"];
         $this->description = $data["description"];
+        $this->category_id = $data["category_id"] ?? null; 
     }
 
-    public function getId(): int
-    {
-        return $this->id;
-    }
-    public function getName(): string
-    {
-        return $this->name;
-    }
-    public function getAuthor(): string
-    {
-        return $this->author;
-    }
-    public function getDescription(): string
-    {
-        return $this->description;
-    }
+    public function getId(): int { return $this->id; }
+    public function getName(): string { return $this->name; }
+    public function getAuthor(): string { return $this->author; }
+    public function getDescription(): string { return $this->description; }
+    public function getCategoryId(): ?int { return $this->category_id; }
 
-    public function setName(string $name)
-    {
-        $this->name = $name;
-    }
-    public function setAuthor(string $author)
-    {
-        $this->author = $author;
-    }
-    public function setDescription(string $description)
-    {
-        $this->description = $description;
-    }
+    public function setName(string $name): void { $this->name = $name; }
+    public function setAuthor(string $author): void { $this->author = $author; }
+    public function setDescription(string $description): void { $this->description = $description; }
+    public function setCategoryId(?int $category_id): void { $this->category_id = $category_id; }
 
-    public function toArray()
+    public function toArray(): array
     {
         return [
             "id" => $this->id,
             "name" => $this->name,
             "author" => $this->author,
-            "description" => $this->description
+            "description" => $this->description,
+            "category_id" => $this->category_id
         ];
     }
-
-
-    public static function create(mysqli $mysqli, string $name, string $author, string $description): Article
+    public static function create(mysqli $mysqli, string $name, string $author, string $description, ?int $category_id = null): Article
     {
-        $stmt = $mysqli->prepare("INSERT INTO " . static::$table . " (name, author, description) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $name, $author, $description);
+        $stmt = $mysqli->prepare("INSERT INTO " . static::$table . " (name, author, description, category_id) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("sssi", $name, $author, $description, $category_id);
         $stmt->execute();
 
         $id = $stmt->insert_id;
         return self::find($mysqli, $id);
     }
 
-    public static function update(mysqli $mysqli, int $id, ?string $name, ?string $author, ?string $description): bool
+    public static function update(mysqli $mysqli, int $id, ?string $name, ?string $author, ?string $description, ?int $category_id = null): bool
     {
         $fields = [];
         $params = [];
@@ -90,6 +71,11 @@ class Article extends Model
             $fields[] = "description = ?";
             $params[] = $description;
             $types .= "s";
+        }
+        if ($category_id !== null) {
+            $fields[] = "category_id = ?";
+            $params[] = $category_id;
+            $types .= "i";
         }
 
         if (empty($fields)) return false;
