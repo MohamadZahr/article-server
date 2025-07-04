@@ -1,7 +1,5 @@
 <?php 
 
-// This block is used to extract the route name from the URL
-//----------------------------------------------------------
 // Define your base directory 
 $base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
 $request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -12,47 +10,28 @@ if (strpos($request, $base_dir) === 0) {
 }
 
 // Ensure the request is at least '/'
-if ($request == '') {
+if ($request === '') {
     $request = '/';
 }
 
-//Examples: 
-//http://localhost/getArticles -------> $request = "getArticles"
-//http://localhost/ -------> $request = "/" (why? because of the if)
-
-// This block is used to extract the route name from the URL
-//----------------------------------------------------------
+// Load route definitions
+$apis = require_once __DIR__ . '/routes/api.php';
 
 
-//Routing starts here (Mapping between the request and the controller & method names)
-//It's an key-value array where the value is an key-value array
-//----------------------------------------------------------
-$apis = [
-    '/articles'         => ['controller' => 'ArticleController', 'method' => 'getAllArticles'],
-    '/delete_articles'         => ['controller' => 'ArticleController', 'method' => 'deleteAllArticles'],
-
-    '/login'         => ['controller' => 'AuthController', 'method' => 'login'],
-    '/register'         => ['controller' => 'AuthController', 'method' => 'register'],
-
-];
-
-//----------------------------------------------------------
-
-
-//Routing Logic here 
-//This is a dynamic logic, that works on any array... 
-//----------------------------------------------------------
 if (isset($apis[$request])) {
-    $controller_name = $apis[$request]['controller']; //if $request == /articles, then the $controller_name will be "ArticleController" 
+    $controller_name = $apis[$request]['controller'];
     $method = $apis[$request]['method'];
-    require_once "controllers/{$controller_name}.php";
+
+    require_once __DIR__ . "/controllers/{$controller_name}.php";
 
     $controller = new $controller_name();
     if (method_exists($controller, $method)) {
         $controller->$method();
     } else {
+        http_response_code(500);
         echo "Error: Method {$method} not found in {$controller_name}.";
     }
 } else {
+    http_response_code(404);
     echo "404 Not Found";
 }

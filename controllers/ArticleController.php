@@ -1,36 +1,123 @@
-<?php 
+<?php
 
-require(__DIR__ . "/../models/Article.php");
-require(__DIR__ . "/../connection/connection.php");
-require(__DIR__ . "/../services/ArticleService.php");
-require(__DIR__ . "/../services/ResponseService.php");
+require_once __DIR__ . '/../controllers/BaseController.php';
+require_once __DIR__ . '/../models/Article.php';
+require_once __DIR__ . '/../connection/connection.php';
 
-class ArticleController{
-    
-    public function getAllArticles(){
+class ArticleController extends BaseController {
+
+    public function getAllArticles() {
         global $mysqli;
 
-        if(!isset($_GET["id"])){
+        try {
             $articles = Article::all($mysqli);
-            $articles_array = ArticleService::articlesToArray($articles); 
-            echo ResponseService::success_response($articles_array);
-            return;
+            $data = array_map(fn($article) => $article->toArray(), $articles);
+            self::success($data);
+        } catch (Exception $e) {
+            self::error($e->getMessage());
         }
-
-        $id = $_GET["id"];
-        $article = Article::find($mysqli, $id)->toArray();
-        echo ResponseService::success_response($article);
-        return;
     }
 
-    public function deleteAllArticles(){
-        die("Deleting...");
+    public function getArticle() {
+        global $mysqli;
+
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                self::error("Missing article ID", 400);
+                return;
+            }
+
+            $article = Article::find($mysqli, (int) $id);
+            self::success($article->toArray());
+        } catch (Exception $e) {
+            self::error($e->getMessage(), 404);
+        }
+    }
+
+    public function addArticle() {
+        global $mysqli;
+
+        try {
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            $name = $data['name'] ?? null;
+            $author = $data['author'] ?? null;
+            $description = $data['description'] ?? null;
+
+            if (!$name || !$author || !$description) {
+                self::error("Missing required fields", 422);
+                return;
+            }
+
+            $article = Article::create($mysqli, $name, $author, $description);
+            self::success($article->toArray(), 201);
+        } catch (Exception $e) {
+            self::error($e->getMessage());
+        }
+    }
+
+    public function updateArticle() {
+        global $mysqli;
+
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                self::error("Missing article ID", 400);
+                return;
+            }
+
+            $data = json_decode(file_get_contents("php://input"), true);
+            $name = $data['name'] ?? null;
+            $author = $data['author'] ?? null;
+            $description = $data['description'] ?? null;
+
+            if ($name === null && $author === null && $description === null) {
+                self::error("No fields to update", 422);
+                return;
+            }
+
+            $updated = Article::update($mysqli, (int) $id, $name, $author, $description);
+            if ($updated) {
+                $article = Article::find($mysqli, (int) $id);
+                self::success($article->toArray());
+            } else {
+                self::error("Update failed", 500);
+            }
+        } catch (Exception $e) {
+            self::error($e->getMessage());
+        }
+    }
+
+    public function deleteArticle() {
+        global $mysqli;
+
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) {
+                self::error("Missing article ID", 400);
+                return;
+            }
+
+            $deleted = Article::delete($mysqli, (int) $id);
+            if ($deleted) {
+                self::success(["deleted" => true], 204);
+            } else {
+                self::error("Article not found", 404);
+            }
+        } catch (Exception $e) {
+            self::error($e->getMessage());
+        }
+    }
+
+    public function deleteAllArticles() {
+        global $mysqli;
+
+        try {
+            Article::deleteAll($mysqli);
+            self::success(["deleted_all" => true], 204);
+        } catch (Exception $e) {
+            self::error($e->getMessage());
+        }
     }
 }
-
-//To-Do:
-
-//1- Try/Catch in controllers ONLY!!! 
-//2- Find a way to remove the hard coded response code (from ResponseService.php)
-//3- Include the routes file (api.php) in the (index.php) -- In other words, seperate the routing from the index (which is the engine)
-//4- Create a BaseController and clean some imports 
